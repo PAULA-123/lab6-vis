@@ -8,6 +8,13 @@ let commits = [];
 let width = 1000, height = 600;
 let margin = {top: 10, right: 10, bottom: 30, left: 20};
 let xAxis, yAxis;
+let yAxisGridlines;
+let hoveredIndex = -1;
+let cursor = {x: 0, y: 0};
+
+
+$: hoveredCommit = commits[hoveredIndex] ?? hoveredCommit ?? {};
+
 
 
 let usableArea = {
@@ -76,21 +83,53 @@ $: yScale = d3.scaleLinear()
 
 $: {
     d3.select(xAxis).call(d3.axisBottom(xScale));
-    d3.select(yAxis).call(d3.axisLeft(yScale));
+    d3.select(yAxis).call(d3.axisLeft(yScale).tickFormat(d => String(d % 24).padStart(2, "0") + ":00"));
+
+}
+
+$: {
+    d3.select(yAxisGridlines).call(
+        d3.axisLeft(yScale)
+          .tickFormat("")
+          .tickSize(-usableArea.width)
+    );
 }
 
 
 </script>
 
 <p>Total lines of code: {data.length}</p>
+
+<dl class="info tooltip" hidden={hoveredIndex === -1} style="top: {cursor.y}px; left: {cursor.x}px">
+
+    <dt>Commit</dt>
+    <dd><a href="{ hoveredCommit.url }" target="_blank">{ hoveredCommit.id }</a></dd>
+
+    <dt>Date</dt>
+    <dd>{ hoveredCommit.datetime?.toLocaleString("en", {dateStyle: "full"}) }</dd>
+
+    <dt>Author</dt>
+    <dd>{ hoveredCommit.author }</dd>
+
+    <dt>Time</dt>
+    <dd>{ hoveredCommit.time }</dd>
+
+    <!-- Add: Time, author, lines edited -->
+</dl>
+
+
 <svg viewBox="0 0 {width} {height}">
 
     <g transform="translate(0, {usableArea.bottom})" bind:this={xAxis} />
     <g transform="translate({usableArea.left}, 0)" bind:this={yAxis} />
+    <g class="gridlines" transform="translate({usableArea.left}, 0)" bind:this={yAxisGridlines} />
+
 
     <g class="dots">
     {#each commits as commit, index }
         <circle
+            on:mouseenter={evt => { hoveredIndex = index;  cursor = {x: evt.x, y: evt.y}; }}
+            on:mouseleave={evt => hoveredIndex = -1}
             cx={ xScale(commit.datetime) }
             cy={ yScale(commit.hourFrac) }
             r="5"
@@ -144,6 +183,59 @@ section{
 
 svg {
         overflow: visible;
+    }
+
+    
+    .info dt{
+        grid-column:1;
+        grid-row:auto;
+    }
+    
+    .info dd{
+        grid-column:2;
+        grid-row:auto;
+        font-weight: 400;
+    }
+    
+    .tooltip{
+        position: fixed;
+        top: 1em;
+        left: 1em;
+    }
+    
+    .gridlines {
+        stroke-opacity: .2;
+    }
+    
+    .info{
+        display: grid;
+        margin:0;
+        grid-template-columns: 2;
+        background-color: oklch(100% 0% 0 / 80%);
+        box-shadow: 1px 1px 3px 3px gray;
+        border-radius: 5px;
+        backdrop-filter: blur(10px);
+        padding:10px;
+    
+        /* ... other styles ... */
+        transition-duration: 500ms;
+        transition-property: opacity, visibility;
+    
+        &[hidden]:not(:hover, :focus-within) {
+            opacity: 0;
+            visibility: hidden;
+        }
+    }
+    circle {
+        transition: 200ms;
+        transform-origin: center;
+        transform-box: fill-box;
+    
+    
+    
+        &:hover {
+            transform: scale(1.5);
+        }
     }
 
 </style>
