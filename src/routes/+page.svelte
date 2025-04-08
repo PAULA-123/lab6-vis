@@ -3,6 +3,24 @@
   import Project from "$lib/Project.svelte";
 
   // let profileData = fetch("https://api.github.com/users/juan1t0");
+
+  import { onMount } from "svelte";
+
+  let githubData = null;
+  let loading = true;
+  let error = null;
+
+  onMount(async () => {
+      try {
+          const response = await fetch("https://api.github.com/users/PAULA-123");
+          githubData = await response.json();
+      } catch (err) {
+          error = err;
+      }
+      loading = false;
+  });
+
+
 </script>
 
 <svelte:head>
@@ -17,29 +35,25 @@
     Mike's world gets turned upside down when a human girl (nicknamed "Boo") enters the monster world.
     Teaming up with Sulley to return Boo to her world, Mike uncovers a company conspiracy and helps solve an energy crisis that plagues the entire city of Monstropolis
 </p>
-{#await fetch("https://api.github.com/users/juan1t0")}
-  <span>Loading...</span>
-{:then response}
-  {#await response.json()}
-    <span>Decoding...</span>
-  {:then data} 
+
+{#if loading}
+    <p>Loading...</p>
+{:else if error}
+    <p class="error">Something went wrong: {error.message}</p>
+{:else}
     <section>
-      <h2>My Github Stats</h2>
-      <dl>
-        <dt>Followers</dt>
-        <dd>{data.followers}</dd>
-        <dt>Following</dt>
-        <dd>{data.following}</dd>
-        <dt>Public Repos</dt>
-        <dd>{data.public_repos}</dd>
-      </dl>
+        <h2>My GitHub Stats</h2>
+        <dl>
+            <dt>Followers</dt>
+            <dd>{githubData.followers}</dd>
+            <dt>Following</dt>
+            <dd>{githubData.following}</dd>
+            <dt>Public Repositories</dt>
+            <dd>{githubData.public_repos}</dd>
+        </dl>
     </section>
-  {:catch error}
-    <span class="error">Something went wrong: {error.message}</span>
-  {/await}
-  {:catch error}
-    <span class="error">Something went wrong: {error.message}</span>
-{/await}
+{/if}
+
 
 <h2>
   Latest Projects
@@ -49,6 +63,8 @@
   <Project data={p} hLevel="3"/>
 {/each}
 </div>
+
+
 
 <style>
   dl{
