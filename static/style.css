@@ -110,4 +110,7 @@ header{
 }
 
 
+.selected {
+    fill: var(--color-accent);
+}
 

@@ -1,5 +1,7 @@
 <script>
 import * as d3 from "d3";
+import Bar from '$lib/Bar.svelte';
+
 
 import { onMount } from "svelte";
 
@@ -11,6 +13,8 @@ let xAxis, yAxis;
 let yAxisGridlines;
 let hoveredIndex = -1;
 let cursor = {x: 0, y: 0};
+let clickedCommits = [];
+
 
 
 $: hoveredCommit = commits[hoveredIndex] ?? hoveredCommit ?? {};
@@ -65,6 +69,16 @@ onMount(async () => {
 
 });
 
+commits = d3.sort(commits, d => -d.totalLines);
+
+$: allTypes = Array.from(new Set(data.map(d => d.type)));
+$: selectedLines = (clickedCommits.length > 0 ? clickedCommits : commits).flatMap(d => d.lines);
+$: selectedCounts = d3.rollup(
+    selectedLines,
+    v => v.length,
+    d => d.type
+);
+$: languageBreakdown = allTypes.map(type => [type, selectedCounts.get(type) || 0]);
 
 
 $: minDate = d3.min(commits.map(d => d.date));
@@ -93,6 +107,35 @@ $: {
           .tickFormat("")
           .tickSize(-usableArea.width)
     );
+}
+
+$: rScale = d3.scaleSqrt()
+                .domain(d3.extent(commits.map(d=>d.totalLines)))
+                .range([2, 30]);
+
+
+
+function dotInteraction (index, evt) {
+    if (evt.type === "mouseenter") {
+        hoveredIndex = index;
+        cursor = {x: evt.x, y: evt.y};
+    }
+    else if (evt.type === "mouseleave") {
+        hoveredIndex = -1
+    }
+
+    else if (evt.type === "click") {
+        let commit = commits[index]
+        if (!clickedCommits.includes(commit)) {
+            // Add the commit to the clickedCommits array
+            clickedCommits = [...clickedCommits, commit];
+        }
+        else {
+                // Remove the commit from the array
+                clickedCommits = clickedCommits.filter(c => c !== commit);
+        }
+}
+
 }
 
 
@@ -128,19 +171,23 @@ $: {
     <g class="dots">
     {#each commits as commit, index }
         <circle
-            on:mouseenter={evt => { hoveredIndex = index;  cursor = {x: evt.x, y: evt.y}; }}
-            on:mouseleave={evt => hoveredIndex = -1}
-            cx={ xScale(commit.datetime) }
-            cy={ yScale(commit.hourFrac) }
-            r="5"
-            fill="steelblue"
-        />
+        class:selected={ clickedCommits.includes(commit) }
+        on:mouseenter={evt => dotInteraction(index, evt)}
+        on:mouseleave={evt => dotInteraction(index, evt)}
+        on:click={ evt => dotInteraction(index, evt) }
+        cx={ xScale(commit.datetime) }
+        cy={ yScale(commit.hourFrac) }
+        r={ rScale(commit.totalLines) }
+        fill="steelblue"
+        fill-opacity="0.5"
+    />
+
     {/each}
     </g> 
-
 </svg>
 
 
+<Bar data={languageBreakdown} width={width} />
 
 
 

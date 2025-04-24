@@ -2,6 +2,7 @@
   import projects from "$lib/projects.json";
   import Project from "$lib/Project.svelte";
 
+
   // let profileData = fetch("https://api.github.com/users/juan1t0");
 
   import { onMount } from "svelte";
