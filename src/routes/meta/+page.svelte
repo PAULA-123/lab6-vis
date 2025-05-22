@@ -1,9 +1,11 @@
 <script>
 import * as d3 from "d3";
 import Bar from '$lib/Bar.svelte';
-
+import Scrolly from "svelte-scrolly";
+import FileLines from '$lib/FileLines.svelte';
 
 import { onMount } from "svelte";
+    // import FileLines from "../../lib/FileLines.svelte";
 
 let data = [];
 let commits = [];
@@ -15,6 +17,7 @@ let hoveredIndex = -1;
 let cursor = {x: 0, y: 0};
 let clickedCommits = [];
 let commitProgress = 100;
+
 
 
 
@@ -72,7 +75,7 @@ onMount(async () => {
 
 });
 
-$: filteredLines = data.filter(d => d.datetime <= commitMaxTime);
+$: filteredData = data.filter(d => d.datetime <= commitMaxTime);
 
 
 
@@ -189,27 +192,46 @@ function dotInteraction (index, evt) {
 </div>
 
 
-<svg viewBox="0 0 {width} {height}">
+<Scrolly bind:progress={ commitProgress }>
+	{#each commits as commit, index }
+	<p>
+		On {commit.datetime.toLocaleString("en", {dateStyle: "full", timeStyle: "short"})},
+		{index === 0 
+			? "I set forth on my very first commit, beginning a magical journey of code. You can view it "
+			: "I added another commit. See it "}
+		<a href="{commit.url}" target="_blank">
+			{index === 0 ? "here" : "here"}
+		</a>.
+		This update transformed {commit.totalLines} lines across { d3.rollups(commit.lines, D => D.length, d => d.file).length } files.
+		With every commit, our project grows.
+	</p>
+{/each}
 
-    <g transform="translate(0, {usableArea.bottom})" bind:this={xAxis} />
-    <g transform="translate({usableArea.left}, 0)" bind:this={yAxis} />
-    <g class="gridlines" transform="translate({usableArea.left}, 0)" bind:this={yAxisGridlines} />
+	<svelte:fragment slot="viz">
+		<svg viewBox="0 0 {width} {height}">
+
+        <FileLines lines={filteredData} width={width}/>
+        <!-- // <FileLines lines={filteredLines} width={width} colorScale={colorScale} />; -->
+
+        <g transform="translate(0, {usableArea.bottom})" bind:this={xAxis} />
+        <g transform="translate({usableArea.left}, 0)" bind:this={yAxis} />
+        <g class="gridlines" transform="translate({usableArea.left}, 0)" bind:this={yAxisGridlines} />
 
 
-    <g class="dots">
-        {#each filteredCommits as commit, index (commit.id) }
+        <g class="dots">
+            {#each filteredCommits as commit, index (commit.id) }
 
-        <circle
-        class:selected={ clickedCommits.includes(commit) }
-        on:mouseenter={evt => dotInteraction(index, evt)}
-        on:mouseleave={evt => dotInteraction(index, evt)}
-        on:click={ evt => dotInteraction(index, evt) }
-        cx={ xScale(commit.datetime) }
-        cy={ yScale(commit.hourFrac) }
-        r={ rScale(commit.totalLines) }
-        fill="steelblue"
-        fill-opacity="0.5"
-    />
+            <circle
+            class:selected={ clickedCommits.includes(commit) }
+            on:mouseenter={evt => dotInteraction(index, evt)}
+            on:mouseleave={evt => dotInteraction(index, evt)}
+            on:click={ evt => dotInteraction(index, evt) }
+            cx={ xScale(commit.datetime) }
+            cy={ yScale(commit.hourFrac) }
+            r={ rScale(commit.totalLines) }
+            fill="steelblue"
+            fill-opacity="0.5"
+        />
 
     {/each}
     </g> 
@@ -219,8 +241,13 @@ function dotInteraction (index, evt) {
 <Bar data={languageBreakdown} width={width} />
 
 
+	</svelte:fragment>
+</Scrolly>
 
-<section>
+
+
+
+<!-- <section>
     <h2>Summary</h2>
     <dl class="stats">
     <dt>Total <abbr title="Lines of code">LOC</abbr></dt>
@@ -230,7 +257,8 @@ function dotInteraction (index, evt) {
     <dt>Commits</dt>
     <dd>{d3.groups(filteredLines, d => d.commit).length}</dd>
     </dl>
-</section>
+</section> -->
+
 
 
 <style>
