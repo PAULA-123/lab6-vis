@@ -1,10 +1,7 @@
 <script>
-
 import * as d3 from "d3";
 export let lines=[];
 export let width=null;
-
-
 
 const firstColumnWidth = 150;
 const fileInfoMargin = 100;
@@ -15,9 +12,15 @@ const baseY = 10;
 const totalLinesOffset = 20;
 const fileInfoHeight = baseY + totalLinesOffset;
 const dotRowHeight = 20;
+
 let colorScale = d3.scaleOrdinal(d3.schemeTableau10);
 
 
+
+let files = [];
+$: files = d3.groups(lines, d => d.file)
+            .map(([name, lines]) => ({ name, lines }))
+            .sort((a, b) => b.lines.length - a.lines.length);
 
 function generateDots(file, svgWidth) {
     const totalDots = Math.ceil(file.lines.length / linesPerDot);
@@ -26,12 +29,10 @@ function generateDots(file, svgWidth) {
     let tspans = "";
     const dotRows = Math.ceil(totalDots / maxDotsPerRow);
     for (let r = 0; r < dotRows; r++) {
-        const rowLines = file.lines.slice(r * maxDotsPerRow, (r + 1) * maxDotsPerRow);
+       const rowLines = file.lines.slice(r * maxDotsPerRow, (r + 1) * maxDotsPerRow);
         const rowDots = rowLines
-            .map(line => `<tspan class="dot" style="fill:${colorScale(line.type)}">•</tspan>`)
-            .join('');
-
-
+        .map(line => `<tspan class="dot" style="fill:${colorScale(line.type)}">•</tspan>`)
+        .join('');
         tspans += `<tspan x="${dotsColumnX}" dy="${r === 0 ? 0 : dotRowHeight + 'px'}">${rowDots}</tspan>`;
     }
     return tspans;
@@ -54,17 +55,9 @@ $: positions = (() => {
   return pos;
 })();
 
-
-
-$: files = d3.groups(lines, d => d.file)
-            .map(([name, lines]) => ({ name, lines }))
-            .sort((a, b) => b.lines.length - a.lines.length);
-
-// ...
 let svg;
-
 $: if (svg) {
-    const svgWidth = 1200;
+    const svgWidth = 500;
     const totalHeight = positions.length
         ? positions[positions.length - 1] + filesWithHeights[filesWithHeights.length - 1].groupHeight
         : 0;
@@ -99,18 +92,20 @@ $: if (svg) {
         .attr('dominant-baseline', 'hanging')
         .text(d => `${d.lines.length} lines`);
 
-    // groups.attr('transform', (d, i) => `translate(0, ${positions[i]})`)
-    //     .select('text.filename')
-    //     .text(d => d.name);
     groups.transition()
-        .duration(3000)
-        .attr('transform', (d, i) => `translate(0, ${positions[i]})`)
-
+    .duration(function(d, i) {
+    const currentTransform = this.getAttribute("transform") || "translate(0,0)";
+    const match = currentTransform.match(/translate\(\s*0\s*,\s*([0-9.]+)\s*\)/);
+    const oldY = match ? +match[1] : 0;
+    const newY = positions[i];
+    const distance = Math.abs(newY - oldY);
+    return distance * 2;
+  })
+    .attr('transform', (d, i) => `translate(0, ${positions[i]})`)
 
     groups
         .select('text.filename')
         .text(d => d.name);
-
 
     groups.select('text.linecount')
         .text(d => `${d.lines.length} lines`)
@@ -129,18 +124,17 @@ $: if (svg) {
         .attr('x', dotsColumnX)
         .attr('fill', "#1f77b4");
 
+}
 
-  }
-// ...
+
 </script>
 <svg bind:this={svg}></svg>
 
 <style>
-:global(text.filename){
+    :global(text.filename){
     fill: light-dark(black, white);
 }
 :global(text.linecount){
     fill: grey;
 }
-
 </style>
